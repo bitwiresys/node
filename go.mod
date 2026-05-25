@@ -62,5 +62,6 @@ require (
 	lukechampine.com/blake3 v1.4.1 // indirect
 )
 
-// WireGuard inbound UserManager (runtime AddUser/RemoveUser) — Farid patch.
-replace github.com/xtls/xray-core => ../xray-core-wireguard-usermanager
+// Patched xray-core with WireGuard inbound UserManager (hot peer reload).
+// Repo: https://github.com/bitwiresys/xray-core-wireguard-usermanager
+replace github.com/xtls/xray-core => github.com/bitwiresys/xray-core-wireguard-usermanager v0.0.0-20260525011047-e8ed5d7b535a
