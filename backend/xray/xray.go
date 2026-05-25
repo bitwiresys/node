@@ -94,6 +94,12 @@ func New(ctx context.Context, xrayConfig *Config, users []*common.User, apiPort,
 		return nil, err
 	}
 
+	if len(users) > 0 {
+		if err = xray.pushWireguardPeers(ctx, users); err != nil {
+			log.Printf("wireguard peer sync after start: %v", err)
+		}
+	}
+
 	// Wait a bit for Xray to fully initialize before starting health checks
 	// This prevents false positives during startup
 	go xray.checkXrayHealth(xCtx)

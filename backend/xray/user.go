@@ -38,6 +38,12 @@ func setupUserAccount(user *common.User) (api.ProxySettings, error) {
 		settings.Hysteria = api.NewHysteriaAccount(user)
 	}
 
+	if user.GetProxies().GetWireguard() != nil {
+		if wgAccount, err := api.NewWireguardAccount(user); err == nil {
+			settings.Wireguard = wgAccount
+		}
+	}
+
 	return settings, nil
 }
 
@@ -112,9 +118,22 @@ func isActiveInbound(inbound *Inbound, inbounds []string, settings api.ProxySett
 				return nil, false
 			}
 			return settings.Hysteria, true
+
+		case Wireguard:
+			if settings.Wireguard == nil {
+				return nil, false
+			}
+			return settings.Wireguard, true
 		}
 	}
 	return nil, false
+}
+
+func wireguardRemoveEmail(inbound *Inbound, user *common.User, settings api.ProxySettings) string {
+	if inbound.Protocol != Wireguard || settings.Wireguard == nil {
+		return user.GetEmail()
+	}
+	return settings.Wireguard.GetEmail()
 }
 
 func (x *Xray) SyncUser(ctx context.Context, user *common.User) error {
@@ -135,7 +154,8 @@ func (x *Xray) SyncUser(ctx context.Context, user *common.User) error {
 			continue
 		}
 
-		_ = handler.RemoveInboundUser(ctx, inbound.Tag, user.Email)
+		removeEmail := wireguardRemoveEmail(inbound, user, proxySetting)
+		_ = handler.RemoveInboundUser(ctx, inbound.Tag, removeEmail)
 		account, isActive := isActiveInbound(inbound, userInbounds, proxySetting)
 		if isActive {
 			inbound.updateUser(account)
@@ -181,6 +201,15 @@ func (x *Xray) UpdateUsers(ctx context.Context, users []*common.User) error {
 		inbound.updateUsers(update.accounts, removeEmails)
 
 		for _, email := range removeEmails {
+			if inbound.Protocol == Wireguard {
+				for _, user := range users {
+					settings, _ := setupUserAccount(user)
+					if settings.Wireguard != nil && user.GetEmail() == email {
+						email = settings.Wireguard.GetEmail()
+						break
+					}
+				}
+			}
 			handler.RemoveInboundUser(ctx, tag, email)
 		}
 
